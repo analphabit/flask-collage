@@ -41,9 +41,9 @@ let _dragState      = null; // { frameId, startMouseX, startMouseY, startLeft, s
 
 function getSettings() {
   return {
-    gap:          parseInt(document.getElementById('gapSize').value)     || 0,
-    bgColor:      document.getElementById('bgColor').value               || '#ffffff',
-    borderColor:  document.getElementById('borderColor').value           || '#cccccc',
+    innerGap:     parseInt(document.getElementById('innerGapSize').value) || 0,
+    bgColor:      document.getElementById('bgColor').value                || '#ffffff',
+    borderColor:  document.getElementById('borderColor').value            || '#cccccc',
     borderWidth:  parseInt(document.getElementById('borderWidth').value)  || 0,
     cornerRadius: parseInt(document.getElementById('cornerRadius').value) || 0,
   };
@@ -391,16 +391,18 @@ function layoutFrames() {
 
   const s = getSettings();
   const { cols, rows } = currentLayout;
-  const totalGapW = s.gap * (cols - 1) + s.gap * 2;
-  const totalGapH = s.gap * (rows - 1) + s.gap * 2;
+  const bw = s.borderWidth;
+  const ig = s.innerGap;
+  const totalGapW = ig * (cols - 1) + bw * 2;
+  const totalGapH = ig * (rows - 1) + bw * 2;
   const cellW = (DISP_WIDTH  - totalGapW) / cols;
   const cellH = (DISP_HEIGHT - totalGapH) / rows;
 
   frames.forEach((f, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
-    const x   = s.gap + col * (cellW + s.gap);
-    const y   = s.gap + row * (cellH + s.gap);
+    const x   = bw + col * (cellW + ig);
+    const y   = bw + row * (cellH + ig);
 
     f.dispX = x; f.dispY = y; f.dispW = cellW; f.dispH = cellH;
 
@@ -416,16 +418,8 @@ function layoutFrames() {
       f.clipRect.set({ left: x, top: y, width: cellW, height: cellH,
         rx: s.cornerRadius, ry: s.cornerRadius, absolutePositioned: true });
     }
-    if (f.borderRect) {
-      f.borderRect.set({ left: x, top: y, width: cellW, height: cellH,
-        rx: s.cornerRadius, ry: s.cornerRadius,
-        strokeWidth: s.borderWidth, stroke: s.borderColor });
-    }
 
-    if (f.imageObj) {
-      applyImageState(f, savedStates[f.frameId]);
-      if (f.borderRect) canvas.bringToFront(f.borderRect);
-    }
+    if (f.imageObj) applyImageState(f, savedStates[f.frameId]);
   });
 
   canvas.getObjects().filter(o => o.isBackground).forEach(o => canvas.remove(o));
@@ -472,33 +466,47 @@ function restoreImageStates(savedStates) {
 
     frame.imageObj = state.img;
     canvas.add(state.img);
-    if (frame.borderRect) canvas.bringToFront(frame.borderRect);
   });
 }
 
 function drawBackground() {
-  const s = getSettings();
-  const bg = new fabric.Rect({
+  const s  = getSettings();
+  const bw = s.borderWidth;
+
+  // Layer 1 (bottom): outer frame color — visible only at canvas edges when borderWidth > 0
+  const outerBg = new fabric.Rect({
     left: 0, top: 0, width: DISP_WIDTH, height: DISP_HEIGHT,
-    fill: s.bgColor, selectable: false, evented: false, isBackground: true,
+    fill: bw > 0 ? s.borderColor : s.bgColor,
+    selectable: false, evented: false, isBackground: true,
   });
-  canvas.add(bg);
-  canvas.sendToBack(bg);
+  canvas.insertAt(outerBg, 0);
+
+  // Layer 2: inner background fills the cell area with bgColor (gap color between images)
+  if (bw > 0) {
+    const innerBg = new fabric.Rect({
+      left: bw, top: bw, width: DISP_WIDTH - bw * 2, height: DISP_HEIGHT - bw * 2,
+      fill: s.bgColor,
+      selectable: false, evented: false, isBackground: true,
+    });
+    canvas.insertAt(innerBg, 1);
+  }
 }
 
 function buildFrameObjects() {
   const s = getSettings();
   const { cols, rows } = currentLayout;
-  const totalGapW = s.gap * (cols - 1) + s.gap * 2;
-  const totalGapH = s.gap * (rows - 1) + s.gap * 2;
+  const bw = s.borderWidth;
+  const ig = s.innerGap;
+  const totalGapW = ig * (cols - 1) + bw * 2;
+  const totalGapH = ig * (rows - 1) + bw * 2;
   const cellW = (DISP_WIDTH  - totalGapW) / cols;
   const cellH = (DISP_HEIGHT - totalGapH) / rows;
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const frameId = `frame_${row}_${col}`;
-      const x = s.gap + col * (cellW + s.gap);
-      const y = s.gap + row * (cellH + s.gap);
+      const x = bw + col * (cellW + ig);
+      const y = bw + row * (cellH + ig);
 
       const placeholder = new fabric.Rect({
         left: x, top: y, width: cellW, height: cellH,
@@ -522,20 +530,11 @@ function buildFrameObjects() {
         rx: s.cornerRadius, ry: s.cornerRadius, absolutePositioned: true,
       });
 
-      const borderRect = new fabric.Rect({
-        left: x, top: y, width: cellW, height: cellH,
-        fill: 'transparent',
-        stroke: s.borderColor, strokeWidth: s.borderWidth,
-        rx: s.cornerRadius, ry: s.cornerRadius,
-        selectable: false, evented: false, isBorder: true,
-      });
-      canvas.add(borderRect);
-
       frames.push({
         frameId, col, row,
         dispX: x, dispY: y, dispW: cellW, dispH: cellH,
         placeholderRect: placeholder,
-        clipRect, borderRect, imageObj: null, labelObj: label,
+        clipRect, imageObj: null, labelObj: label,
       });
     }
   }

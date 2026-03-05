@@ -27,21 +27,29 @@ function exportCollage(format) {
     height: OUTPUT_HEIGHT,
   });
 
-  // Background
-  const bg = new fabric.Rect({
+  // Background: outer rect in borderColor, inner rect in bgColor
+  const borderWOut = s.borderWidth * scale;
+  const outerBg = new fabric.Rect({
     left: 0, top: 0, width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT,
-    fill: s.bgColor,
+    fill: s.borderWidth > 0 ? s.borderColor : s.bgColor,
   });
-  exportCanvas.add(bg);
+  exportCanvas.add(outerBg);
+  if (s.borderWidth > 0) {
+    const innerBg = new fabric.Rect({
+      left: borderWOut, top: borderWOut,
+      width: OUTPUT_WIDTH - borderWOut * 2, height: OUTPUT_HEIGHT - borderWOut * 2,
+      fill: s.bgColor,
+    });
+    exportCanvas.add(innerBg);
+  }
 
   // For each frame, scale coords to output resolution
   const { cols, rows } = currentLayout;
-  const gapOut          = s.gap * scale;
-  const cornerOut       = s.cornerRadius * scale;
-  const borderWOut      = s.borderWidth * scale;
+  const innerGapOut = s.innerGap * scale;
+  const cornerOut   = s.cornerRadius * scale;
 
-  const totalGapW = gapOut * (cols - 1) + gapOut * 2;
-  const totalGapH = gapOut * (rows - 1) + gapOut * 2;
+  const totalGapW = innerGapOut * (cols - 1) + borderWOut * 2;
+  const totalGapH = innerGapOut * (rows - 1) + borderWOut * 2;
   const cellW = (OUTPUT_WIDTH  - totalGapW) / cols;
   const cellH = (OUTPUT_HEIGHT - totalGapH) / rows;
 
@@ -51,8 +59,8 @@ function exportCollage(format) {
   frames.forEach((frame, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
-    const x   = gapOut + col * (cellW + gapOut);
-    const y   = gapOut + row * (cellH + gapOut);
+    const x   = borderWOut + col * (cellW + innerGapOut);
+    const y   = borderWOut + row * (cellH + innerGapOut);
 
     // Placeholder (gray cell for frames without an image)
     if (!frame.imageObj) {
@@ -63,16 +71,6 @@ function exportCollage(format) {
       });
       exportCanvas.add(ph);
 
-      if (s.borderWidth > 0) {
-        const border = new fabric.Rect({
-          left: x, top: y, width: cellW, height: cellH,
-          fill: 'transparent',
-          stroke: s.borderColor, strokeWidth: borderWOut,
-          rx: cornerOut, ry: cornerOut,
-        });
-        exportCanvas.add(border);
-      }
-
       completed++;
       if (completed === pending) finishExport(exportCanvas, format);
       return;
@@ -81,14 +79,6 @@ function exportCollage(format) {
     // Clone image and scale to output coords
     const img = frame.imageObj;
     img.clone(cloned => {
-      // Scale factor from display to output
-      const imgScaleX = (img.scaleX / DISP_SCALE) * 1; // img was placed with display coords
-      const imgScaleY = (img.scaleY / DISP_SCALE) * 1;
-      const imgLeft   = (img.left - frame.dispX) / DISP_SCALE * 1;  // relative to frame
-      const imgTop    = (img.top  - frame.dispY) / DISP_SCALE * 1;
-
-      // Recompute output scale: display pixel coords → output pixel coords
-      // img.scaleX is already in display pixels; we need output pixels
       const outScaleX = img.scaleX * scale;
       const outScaleY = img.scaleY * scale;
       const outLeft   = x + (img.left - frame.dispX) * scale;
@@ -111,17 +101,6 @@ function exportCollage(format) {
       });
 
       exportCanvas.add(cloned);
-
-      // Border on top
-      if (s.borderWidth > 0) {
-        const border = new fabric.Rect({
-          left: x, top: y, width: cellW, height: cellH,
-          fill: 'transparent',
-          stroke: s.borderColor, strokeWidth: borderWOut,
-          rx: cornerOut, ry: cornerOut,
-        });
-        exportCanvas.add(border);
-      }
 
       completed++;
       if (completed === pending) finishExport(exportCanvas, format);

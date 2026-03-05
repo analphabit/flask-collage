@@ -74,8 +74,6 @@ function placeImageInFrame(frame, img) {
   });
 
   canvas.add(img);
-  if (frame.borderRect) canvas.bringToFront(frame.borderRect);
-
   frame.imageObj = img;
   canvas.renderAll();
 
@@ -107,7 +105,6 @@ function fitImageToFrame(frame) {
     _coverScale: coverScale,
   });
 
-  if (frame.borderRect) canvas.bringToFront(frame.borderRect);
   canvas.renderAll();
 }
 

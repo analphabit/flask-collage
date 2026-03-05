@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/collage.css') }}">
 </head>
 <body>
-  <h1>Image Collage <span class="subtitle">— Fabric.js + Flask</span></h1>
+  <h1>Image Collage <span class="subtitle">v{{ version }}</span></h1>
 
   <div id="status">Layout wählen und auf ein Feld klicken, um ein Bild zu laden.</div>
 
@@ -48,17 +48,17 @@
     <!-- Row 2: Settings -->
     <div id="settings-row">
       <label class="settings-label">
-        Abstand:
-        <input type="number" id="gapSize" value="8" min="0" max="60" onchange="onSettingsChange()"> px
+        Bildtrenner:
+        <input type="number" id="innerGapSize" value="8" min="0" max="120" onchange="onSettingsChange()"> px
       </label>
       <label class="settings-label">
         Hintergrund:
         <input type="color" id="bgColor" value="#ffffff" onchange="onSettingsChange()">
       </label>
       <label class="settings-label">
-        Rahmen:
+        Außenrahmen:
         <input type="color" id="borderColor" value="#cccccc" onchange="onSettingsChange()">
-        <input type="number" id="borderWidth" value="0" min="0" max="20" style="width:50px;" onchange="onSettingsChange()"> px
+        <input type="number" id="borderWidth" value="0" min="0" max="120" style="width:50px;" onchange="onSettingsChange()"> px
       </label>
       <label class="settings-label">
         Abrunden:
@@ -133,9 +133,9 @@
         <div class="help-section">
           <h3>5. Einstellungen</h3>
           <ul>
-            <li><strong>Abstand:</strong> Lücke zwischen den Feldern in Pixeln</li>
-            <li><strong>Hintergrund:</strong> Farbe hinter und zwischen den Feldern</li>
-            <li><strong>Rahmen:</strong> Optionaler Rahmen um jedes Bild (Farbe + Breite)</li>
+            <li><strong>Bildtrenner:</strong> Abstand zwischen den Bildern in Pixeln</li>
+            <li><strong>Hintergrund:</strong> Farbe zwischen den Bildern (Bildtrenner-Farbe)</li>
+            <li><strong>Außenrahmen:</strong> Farbiger Rahmen um die gesamte Collage (Farbe + Breite in px)</li>
             <li><strong>Abrunden:</strong> Abgerundete Ecken für alle Felder</li>
           </ul>
           <p>Alle Einstellungen wirken sofort auf den Canvas.</p>
