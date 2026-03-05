@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Collage Tool (Flask + Fabric.js)</title>
+
+  {% if use_cdn %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  {% else %}
+  <script src="{{ url_for('static', filename='fabric.min.js') }}"></script>
+  {% endif %}
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/collage.css') }}">
+</head>
+<body>
+  <h1>Image Collage <span class="subtitle">— Fabric.js + Flask</span></h1>
+
+  <div id="status">Layout wählen und auf ein Feld klicken, um ein Bild zu laden.</div>
+
+  <div id="controls">
+    <!-- Row 1: Layout presets -->
+    <div id="toolbar">
+      <strong style="font-size:13px;margin-right:6px;">Layout:</strong>
+      <div class="preset-grid" id="presetGrid">
+        <!-- Filled by JS -->
+      </div>
+      <div class="divider"></div>
+      <strong style="font-size:13px;margin-right:4px;">Größe:</strong>
+      <select id="canvasSize" class="btn" style="padding:4px 6px;" onchange="onCanvasSizeChange()">
+        <option value="1920x1080">1920 × 1080 (16:9)</option>
+        <option value="1280x720">1280 × 720 (16:9)</option>
+        <option value="1200x900">1200 × 900 (4:3)</option>
+        <option value="1080x1080">1080 × 1080 (1:1)</option>
+        <option value="2480x3508">A4 Hochformat</option>
+        <option value="3508x2480">A4 Querformat</option>
+        <option value="custom">Benutzerdefiniert…</option>
+      </select>
+      <span id="customSizeControls" class="hidden" style="display:inline-flex;gap:4px;align-items:center;">
+        <input type="number" id="customW" value="1920" min="200" max="8000" class="settings-label" style="width:68px;">
+        ×
+        <input type="number" id="customH" value="1080" min="200" max="8000" class="settings-label" style="width:68px;">
+        px
+        <button class="btn btn-primary" onclick="applyCustomSize()">OK</button>
+      </span>
+      <button class="btn-info" onclick="document.getElementById('helpModal').classList.remove('hidden')" title="Hilfe">?</button>
+    </div>
+
+    <!-- Row 2: Settings -->
+    <div id="settings-row">
+      <label class="settings-label">
+        Abstand:
+        <input type="number" id="gapSize" value="8" min="0" max="60" onchange="onSettingsChange()"> px
+      </label>
+      <label class="settings-label">
+        Hintergrund:
+        <input type="color" id="bgColor" value="#ffffff" onchange="onSettingsChange()">
+      </label>
+      <label class="settings-label">
+        Rahmen:
+        <input type="color" id="borderColor" value="#cccccc" onchange="onSettingsChange()">
+        <input type="number" id="borderWidth" value="0" min="0" max="20" style="width:50px;" onchange="onSettingsChange()"> px
+      </label>
+      <label class="settings-label">
+        Abrunden:
+        <input type="number" id="cornerRadius" value="0" min="0" max="80" style="width:50px;" onchange="onSettingsChange()"> px
+      </label>
+    </div>
+
+    <!-- Row 3: Per-frame zoom controls -->
+    <div id="zoom-row" class="no-image">
+      <span class="zoom-label-prefix">Zoom:</span>
+      <button class="btn zoom-btn" onclick="zoomSelectedOut()" title="Herauszoomen">−</button>
+      <input type="number" id="zoomInput" value="100" min="100" max="2000" step="25"
+             title="Zoom in % (100 = Cover-Fit)" onchange="applyZoomInput()">
+      <button class="btn zoom-btn" onclick="zoomSelectedIn()" title="Hineinzoomen">+</button>
+      <button class="btn zoom-btn" onclick="zoomSelectedReset()" title="Zoom zurücksetzen (Cover-Fit)">↺</button>
+      <span id="zoomFrameLabel" class="zoom-frame-label">Kein Feld ausgewählt</span>
+      <span class="zoom-hint">Mausrad oder Buttons zum Zoomen · Doppelklick = Reset</span>
+    </div>
+
+    <!-- Row 4: Export -->
+    <div id="export-row">
+      <button class="btn btn-success" onclick="downloadPNG()">⬇ Download PNG</button>
+      <button class="btn btn-success" onclick="downloadJPG()">⬇ Download JPG</button>
+      <button class="btn" onclick="clearAll()">✕ Alles leeren</button>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-wrapper">
+    <div id="canvas-container">
+      <canvas id="c"></canvas>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="modal-box help-modal-box">
+      <div class="help-header">
+        <h2>Bedienungsanleitung — Collage Tool</h2>
+        <button class="help-close" onclick="document.getElementById('helpModal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="help-body">
+
+        <div class="help-section">
+          <h3>1. Layout wählen</h3>
+          <p>Wähle eines der vordefinierten Raster (z.B. 2×1, 1×2, 2×2) oder klicke auf
+          <strong>Benutzerdefiniert</strong> für ein beliebiges Zeilen/Spalten-Raster.</p>
+        </div>
+
+        <div class="help-section">
+          <h3>2. Canvas-Größe</h3>
+          <p>Wähle eine Ausgabe-Auflösung aus dem Dropdown. Mit <em>Benutzerdefiniert…</em>
+          kannst du eine beliebige Pixel-Größe eingeben.</p>
+        </div>
+
+        <div class="help-section">
+          <h3>3. Bild in ein Feld laden</h3>
+          <p>Klicke auf ein graues Feld auf dem Canvas — ein Datei-Dialog öffnet sich.
+          Wähle ein Bild (PNG, JPG, WebP). Das Bild wird automatisch auf das Feld skaliert
+          (<em>Cover-Modus</em>: das Feld wird vollständig ausgefüllt).</p>
+        </div>
+
+        <div class="help-section">
+          <h3>4. Bild innerhalb des Felds verschieben &amp; zoomen</h3>
+          <ul>
+            <li><strong>Bild ziehen:</strong> Klick &amp; Drag auf ein gefülltes Feld</li>
+            <li><strong>Mausrad:</strong> Rein- und rauszoomen innerhalb des Felds</li>
+            <li><strong>Doppelklick:</strong> Bild auf Cover-Größe zurücksetzen</li>
+          </ul>
+        </div>
+
+        <div class="help-section">
+          <h3>5. Einstellungen</h3>
+          <ul>
+            <li><strong>Abstand:</strong> Lücke zwischen den Feldern in Pixeln</li>
+            <li><strong>Hintergrund:</strong> Farbe hinter und zwischen den Feldern</li>
+            <li><strong>Rahmen:</strong> Optionaler Rahmen um jedes Bild (Farbe + Breite)</li>
+            <li><strong>Abrunden:</strong> Abgerundete Ecken für alle Felder</li>
+          </ul>
+          <p>Alle Einstellungen wirken sofort auf den Canvas.</p>
+        </div>
+
+        <div class="help-section">
+          <h3>6. Export</h3>
+          <p>Klicke auf <strong>Download PNG</strong> oder <strong>Download JPG</strong> —
+          die Collage wird in der gewählten Ausgabe-Auflösung exportiert (off-screen,
+          sodass der sichtbare Canvas unverändert bleibt).</p>
+        </div>
+
+        <div class="help-section">
+          <h3>7. Alles leeren</h3>
+          <p>Entfernt alle geladenen Bilder. Layout und Einstellungen bleiben erhalten.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/collage-core.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/collage-images.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/collage-export.js') }}"></script>
+</body>
+</html>
