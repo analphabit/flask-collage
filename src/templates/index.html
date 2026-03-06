@@ -70,8 +70,10 @@
     <div id="zoom-row" class="no-image">
       <span class="zoom-label-prefix">Zoom:</span>
       <button class="btn zoom-btn" onclick="zoomSelectedOut()" title="Herauszoomen">−</button>
-      <input type="number" id="zoomInput" value="100" min="100" max="2000" step="25"
-             title="Zoom in % (100 = Cover-Fit)" onchange="applyZoomInput()">
+      <input type="number" id="zoomInput" value="100" min="100" max="2000" step="1"
+             title="Zoom in % (100 = Cover-Fit)" onchange="applyZoomInput()"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();applyZoomInput();}">
+      <span class="zoom-pct-label">%</span>
       <button class="btn zoom-btn" onclick="zoomSelectedIn()" title="Hineinzoomen">+</button>
       <button class="btn zoom-btn" onclick="zoomSelectedReset()" title="Zoom zurücksetzen (Cover-Fit)">↺</button>
       <span id="zoomFrameLabel" class="zoom-frame-label">Kein Feld ausgewählt</span>

@@ -81,6 +81,12 @@ h1 {
   border-left: 1px solid #c0d8f8;
 }
 
+.zoom-pct-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+}
+
 .zoom-hint {
   font-size: 11px;
   color: #888;

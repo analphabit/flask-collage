@@ -209,8 +209,8 @@ function updateZoomUI() {
   if (zoomInput)  zoomInput.value        = pct;
 }
 
-function zoomSelectedIn()    { const f = getSelectedFrame(); if (f && f.imageObj) zoomFrameImage(f, 1.25); }
-function zoomSelectedOut()   { const f = getSelectedFrame(); if (f && f.imageObj) zoomFrameImage(f, 1 / 1.25); }
+function zoomSelectedIn()    { const f = getSelectedFrame(); if (f && f.imageObj) zoomFrameImage(f, 1.01); }
+function zoomSelectedOut()   { const f = getSelectedFrame(); if (f && f.imageObj) zoomFrameImage(f, 1 / 1.01); }
 function zoomSelectedReset() { const f = getSelectedFrame(); if (f && f.imageObj) { fitImageToFrame(f); updateZoomUI(); } }
 
 function applyZoomInput() {
