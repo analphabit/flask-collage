@@ -2,10 +2,16 @@
 Image Collage Tool — Flask backend
 Serves the single-page collage editor.
 """
+import csv
 import os
-from flask import Flask, render_template
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
+
+_LOG_DIR   = os.path.join(os.path.dirname(__file__), '..', 'log')
+_USAGE_LOG = os.path.join(_LOG_DIR, 'usage.csv')
+_CSV_COLS  = ['timestamp', 'format', 'layout', 'resolution', 'images_loaded', 'image_names']
 
 def _read_version():
     """Read VERSION from flask.ini (one directory above src/)."""
@@ -18,6 +24,27 @@ def _read_version():
     except OSError:
         pass
     return '?'
+
+@app.route('/api/log-export', methods=['POST'])
+def log_export():
+    data = request.get_json(silent=True) or {}
+    row = {
+        'timestamp':    datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+        'format':       data.get('format', ''),
+        'layout':       data.get('layout', ''),
+        'resolution':   data.get('resolution', ''),
+        'images_loaded': data.get('images_loaded', ''),
+        'image_names':  '; '.join(data.get('image_names', [])),
+    }
+    os.makedirs(_LOG_DIR, exist_ok=True)
+    write_header = not os.path.exists(_USAGE_LOG) or os.path.getsize(_USAGE_LOG) == 0
+    with open(_USAGE_LOG, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=_CSV_COLS)
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
+    return jsonify({'ok': True})
+
 
 @app.route('/')
 def index():

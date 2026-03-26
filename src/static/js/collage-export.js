@@ -122,4 +122,21 @@ function finishExport(exportCanvas, format) {
 
   exportCanvas.dispose();
   updateStatus(`Export ${OUTPUT_WIDTH}×${OUTPUT_HEIGHT}px als ${ext.toUpperCase()} abgeschlossen`, 'success');
+
+  const { cols, rows } = currentLayout;
+  const imageNames = frames
+    .filter(f => f.imageObj && f.imageObj._fileName)
+    .map(f => f.imageObj._fileName);
+
+  fetch('/api/log-export', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      format:        ext,
+      layout:        `${cols}x${rows}`,
+      resolution:    `${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}`,
+      images_loaded: imageNames.length,
+      image_names:   imageNames,
+    }),
+  }).catch(() => {}); // Logging-Fehler sollen den Export-Workflow nicht stören
 }

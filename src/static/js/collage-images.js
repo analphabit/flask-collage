@@ -25,6 +25,7 @@ function getFileInput() {
           if (!img) { updateStatus('Fehler beim Laden des Bildes', 'error'); return; }
           const frame = frames.find(f => f.frameId === _pendingFrameId);
           if (!frame) return;
+          img._fileName = file.name;
           placeImageInFrame(frame, img);
           updateStatus(`Bild geladen (${img.width}×${img.height}px)`, 'success');
         });
